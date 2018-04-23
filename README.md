@@ -5,3 +5,11 @@ ffnn-c is a minimal feedforward neural networks implementation in C. Suitable fo
 
 For any questions please contact adis@brainco.tech.
 
+# Running examples and tests with Makefile
+```
+make test && ./test
+make example && ./example
+```
+
+
+

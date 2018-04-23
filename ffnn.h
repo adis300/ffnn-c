@@ -11,7 +11,6 @@
 #ifndef _ffnn_h
 #define _ffnn_h
 
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +20,7 @@ typedef double (*ffnn_activation_func)(double z);
 
 typedef struct {
 
-    ffnn_activation_func activation;
+    ffnn_activation_func activation_func;
 
     int numberOfNodes;
 

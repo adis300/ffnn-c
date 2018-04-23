@@ -10,14 +10,16 @@
  */
 
 #include "ffnn.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
 #define LOOKUP_SIZE 4096
 #define SIGMOID_CUTOFF 45.0
 
-const double SIGMOID_DOM_MIN = -20.0;
-const double SIGMOID_DOM_MAX = 20.0;
+// const double SIGMOID_DOM_MIN = -20.0;
+// const double SIGMOID_DOM_MAX = 20.0;
 
 double sigmoid_lookup[LOOKUP_SIZE];
 
@@ -38,8 +40,20 @@ double inline ffnn_activation_sigmoid(double x) {
 }
 
 NetworkLayer* create_layer(int numberOfNodes, int inputLength, double* weights, double * biases, const char* activation){
+    // Layer activation function defaults to sigmoid
+    NetworkLayer* networkLayer = (NetworkLayer *) malloc(sizeof(NetworkLayer));
+    if (strcmp(activation, "linear") == 0) networkLayer -> activation_func = ffnn_activation_linear;
+    else if (strcmp(activation, "relu") == 0) networkLayer -> activation_func = ffnn_activation_relu;
+    else if (strcmp(activation, "threshold") == 0) {
+        printf("NetworkLayer:create_layer:loading a threshold function\n");
+        networkLayer -> activation_func = ffnn_activation_threshold;
+    }
+    else {
+        printf("NetworkLayer:create_layer:loading a sigmoid function as default\n");
+        networkLayer -> activation_func = ffnn_activation_sigmoid;
+    }
     
-    return 0;
+    return networkLayer;
 }
 
 /*
@@ -52,7 +66,7 @@ void create_ffnn_sigmoid_lookup() {
 }
 */
 
-double * layer_output (int col, int row, double * input, double * grid, double * bias) {
-
+double * run (Network* network, double * input){
+    return 0;
 }
 
