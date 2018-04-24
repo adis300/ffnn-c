@@ -1,9 +1,25 @@
 #include "ffnn.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
-int test_create_layer(){
-    NetworkLayer* layer = create_layer(3, 4, 0, 0, "relu");
+const int numberOfNodes = 3;
+const int inputLength = 4;
+
+int test_layer(){
+
+    double * biases = (double *) malloc(numberOfNodes * sizeof(double));
+    biases[0] = 1.0; biases[1] = 2.0; biases[2] = 3.0;
+
+    double * inputs = (double *) malloc(inputLength * sizeof(double));
+    inputs[0] = 1.0; inputs[1] = 2.0; inputs[2] = 3.0; inputs[3] = 4.0;
+
+    double * weights = (double *) malloc(numberOfNodes * inputLength * sizeof(double));
+    weights[0] = 1.0; weights[1] = 2.0; weights[2] = 3.0; weights[3] = 4.0;
+    weights[4] = 1.0; weights[5] = 2.0; weights[6] = 3.0; weights[7] = 4.0;
+    weights[8] = 1.0; weights[9] = 2.0; weights[10] = 3.0; weights[11] = 4.0;
+
+    NetworkLayer* layer = create_layer(numberOfNodes, inputLength, weights, biases, "relu");
     // Test activation functions
     double activated = layer -> activation_func(0.1);
     if(fabs(activated - 0.1) > 0.001) {
@@ -15,13 +31,21 @@ int test_create_layer(){
         printf("ERROR:test_create_layer:negative activation:%lf \n", activated);
         return 1;
     }
+
+    double * output = run_layer(layer, inputs);
+    if(fabs(output[0] - 31.0) > 0.001 || fabs(output[1] - 32.0) > 0.001 || fabs(output[2] - 33.0) > 0.001){
+        printf("ERROR:test_create_layer:incorrect layer response:%lf,%lf, %lf \n", output[0],output[1],output[2]);
+    }
+
+    free(inputs);
+    free_layer(layer);
     return 0;
 }
 
 int main () //(int argc, char *argv[])
 {   
-    printf("Start ffnn test.\n");
-    if(test_create_layer() != 0) {
+    printf("========= Starting ffnn test =========\n");
+    if(test_layer() != 0) {
         printf("FAILURE:test_create_layer.\n");
         return 1;
     }

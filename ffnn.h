@@ -16,15 +16,15 @@
 extern "C" {
 #endif
 
-typedef double (*ffnn_activation_func)(double z);
+typedef double (*ActivationFunc)(double z);
 
 typedef struct {
 
-    ffnn_activation_func activation_func;
+    ActivationFunc activation_func;
 
-    int numberOfNodes;
+    int number_of_nodes;
 
-    int inputLength;
+    int input_length;
 
     double *weights; // (numberOfNodes * inputLength) A grid, row1, row2, row3 ... to represent a matrix
 
@@ -57,7 +57,10 @@ double ffnn_activation_threshold(double x);
 double ffnn_activation_linear(double x);
 double ffnn_activation_relu(double x);
 
+// Layer functions
 NetworkLayer* create_layer(int numberOfNodes, int inputLength, double* weights, double * biases, const char* activation);
+void free_layer(NetworkLayer* network_layer);
+double * run_layer(NetworkLayer* network_layer, double* input);
 
 double * run (Network* network, double * input);
 
