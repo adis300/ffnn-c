@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include "extra/jsmn.c"
 
 #define LOOKUP_SIZE 4096
 #define SIGMOID_CUTOFF 45.0
@@ -91,6 +92,13 @@ void create_ffnn_sigmoid_lookup() {
     }
 }
 */
+
+Network* create_network(char * json_network){
+    Network* network = (Network *) malloc(sizeof(Network));
+    printf("Network:create_network:\n %s \n\n", json_network);
+
+    return network;
+}
 
 double * run (Network* network, double * input){
     return 0;

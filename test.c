@@ -6,6 +6,9 @@
 const int numberOfNodes = 3;
 const int inputLength = 4;
 
+static char * JSON_NETWORK = 
+    "{\"layerSizes\":[3,2],\"activationHidden\":\"sigmoid\",\"activationOutput\":\"relu\",\"weights\":[{\"col\": 3,\"row\": 2,\"grid\":[0.016354116618798153,-0.35975899610657203, -0.4739052054816415, 0.90403169668467331, 0.3511014503199148, -0.73113043081533657]}],\"biases\":[{\"vector\" :[ 0.27921540303119241, 0.37599578750133311]}]}";
+
 int test_layer(){
 
     double * biases = (double *) malloc(numberOfNodes * sizeof(double));
@@ -42,16 +45,27 @@ int test_layer(){
     return 0;
 }
 
+int test_create_network(){
+    Network* network = create_network(JSON_NETWORK);
+    if(network == NULL) return 1;
+    return 0;
+}
+
 int main () //(int argc, char *argv[])
 {   
     printf("========= Starting ffnn test =========\n");
+
     if(test_layer() != 0) {
-        printf("FAILURE:test_create_layer.\n");
+        printf("FAILURE:test_layer.\n");
+        return 1;
+    }
+
+    if(test_create_network() != 0) {
+        printf("FAILURE:test_create_network.\n");
         return 1;
     }
 
     printf("SUCCESS:No failure detected.\n");
-
     return 0;
 }
 

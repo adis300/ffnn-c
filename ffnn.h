@@ -16,6 +16,8 @@
 extern "C" {
 #endif
 
+#define MAXIMUM_JSON_TOKEN_SIZE 1024 // Assume only 256 keys are allowed
+
 typedef double (*ActivationFunc)(double z);
 
 typedef struct {
@@ -61,6 +63,9 @@ double ffnn_activation_relu(double x);
 NetworkLayer* create_layer(int numberOfNodes, int inputLength, double* weights, double * biases, const char* activation);
 void free_layer(NetworkLayer* network_layer);
 double * run_layer(NetworkLayer* network_layer, double* input);
+
+// Network functions
+Network* create_network(char * json_network);
 
 double * run (Network* network, double * input);
 
