@@ -37,19 +37,19 @@ typedef struct {
 } NetworkLayer;
 
 typedef struct {
-    /* Total number of weights, and size of weights buffer. */
+    // Stores activation function names
+    char* activation_hidden;
+    char* activation_output;
+    // Stores layer sizes and length 
+    int layer_length_with_input;
+    int * layer_node_length_with_input;
+    
+    // Stores input and output length summary 
     int output_length;
-
-    /* Total number of neurons + inputs and size of output buffer. */
     int input_length;
 
-    /* All weights (total_weights long). */
+    // Stores network output
     double * output;
-
-    /* Stores input array and output of each neuron (total_neurons long). */
-    int layer_length;
-
-    /* Stores delta of each hidden and output neuron (total_neurons - inputs long). */
     NetworkLayer * layers;
 
 } Network;
