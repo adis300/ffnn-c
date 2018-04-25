@@ -22,7 +22,7 @@
 // const double SIGMOID_DOM_MIN = -20.0;
 // const double SIGMOID_DOM_MAX = 20.0;
 
-double sigmoid_lookup[LOOKUP_SIZE];
+// double sigmoid_lookup[LOOKUP_SIZE];
 
 // Activation functions
 double inline ffnn_activation_linear(double x) { return x;}
@@ -35,9 +35,9 @@ double inline ffnn_activation_relu(double x) {
 }
 
 double inline ffnn_activation_sigmoid(double x) {
-    if (x < -SIGMOID_CUTOFF) return 0;
-    if (x > SIGMOID_CUTOFF) return 1;
-    return 1.0 / (1 + exp(-x));
+    if (x < -SIGMOID_CUTOFF) return 0.0;
+    if (x > SIGMOID_CUTOFF) return 1.0;
+    return 1.0 / (1.0 + exp(-x));
 }
 
 NetworkLayer* create_layer(int number_of_nodes, int input_length, double* weights, double * biases, const char* activation){

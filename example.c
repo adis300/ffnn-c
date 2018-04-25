@@ -1,4 +1,5 @@
 #include "ffnn.h"
+#include <stdlib.h>
 #include <stdio.h>
 
 static char * JSON_NETWORK_ACTIVATION_BY_LAYERS = "{\"layerSizes\":[3,2,2],\"activations\":[\"relu\",\"relu\"],\"weights\":[{\"col\": 3,\"row\": 2,\"grid\":[1,1, 1.0, 1.0, 1.0, 1.0]},{\"col\": 2,\"row\": 2,\"grid\":[1,1,1,1]}],\"biases\":[{\"vector\" :[ 0.25, 0.25]},{\"vector\" :[ 0.5, 0.5]}]}";
