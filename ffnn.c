@@ -108,18 +108,26 @@ Network* create_network(char * json_network){
 
 	/* Assume the top-level element is an object */
 	if (element_count < 1 || tokens[0].type != JSMN_OBJECT) {
-		printf("Object expected\n");
+		printf("Network:create_network:JSON object expected\n");
 		return NULL;
 	}
 
     Network* network = (Network *) malloc(sizeof(Network));
 
     printf("Network:create_network:parameters------------:\n");
-    int token_index = 1;
+    // Declare temporary parameters for constructing network layers
     char * activation_universal = NULL;
-    char ** activations = NULL;
+    char ** activations = NULL;// Use alloca or malloc+free
+    int number_of_layers = 0;
     int activation_size = 0;
-    
+    double ** layer_biases = NULL;// Use alloca or malloc+free
+    int layer_biases_size = 0;
+    double ** layer_weights = NULL;// Use alloca or malloc+free
+    int * layer_weight_cols = NULL;// Use alloca or malloc+free
+    int * layer_weight_rows = NULL;// Use alloca or malloc+free
+    int layer_weights_size = 0;
+
+    int token_index = 1;
 	/* Loop over all keys of the root object */
     while (token_index < element_count) {
         if (json_key_check(json_network, &tokens[token_index], "activations") == 0) {
@@ -130,7 +138,7 @@ Network* create_network(char * json_network){
             }
             printf("-- activations:\n");
             ++ token_index; // Unwrap array.
-            activations = (char**) alloca(activation_values -> size * sizeof(char*));
+            activations = (char**) malloc(activation_values -> size * sizeof(char*));
             activation_size = activation_values -> size;
 			for (int i = 0; i < activation_values -> size; i++) {
 				jsmntok_t *value_token = &tokens[token_index+i];
@@ -149,9 +157,9 @@ Network* create_network(char * json_network){
                 printf("ERROR:Network:create_network:Invalid network format:layerSizes is not an array!");
                 break; /// We expect groups to be an array of strings 
             }
-            network -> layer_sizes = (int *) malloc(json_layer_sizes -> size * sizeof(int));
-            network -> number_of_layers = json_layer_sizes -> size - 1;
-            printf("-- numberOfLayers:%i (Not including input layer)\n", network -> number_of_layers);
+            network -> layer_sizes = (int *) alloca(json_layer_sizes -> size * sizeof(int));
+            number_of_layers = json_layer_sizes -> size - 1;
+            printf("-- numberOfLayers:%i (Not including input layer)\n", number_of_layers);
             ++ token_index; // Unwrap array.
             printf("-- layerSizes:\n");
 			for (int i = 0; i < json_layer_sizes -> size; i++) {
@@ -175,6 +183,7 @@ Network* create_network(char * json_network){
             }
             ++ token_index; // Unwrap array.
             printf("-- biases:\n");
+            layer_biases = (double **) alloca(bias_objects -> size * sizeof(double *));
             for(int bias_ind = 0; bias_ind < bias_objects -> size; bias_ind ++){
                 jsmntok_t *bias_object = &tokens[token_index];
                 ++ token_index; // Unwrap biasObject
@@ -183,18 +192,20 @@ Network* create_network(char * json_network){
                     if(json_key_check(json_network, &tokens[token_index + 1], "vector")){
                         ++ token_index; // access vector value
                         jsmntok_t *bias_object_vector = &tokens[token_index];
+                        layer_biases[bias_ind] = (double *) alloca(bias_object_vector -> size * sizeof(double));
                         printf("---- vector:\n");
                         for (int i = 0; i < bias_object_vector -> size; i++) {
                             jsmntok_t *value = &tokens[token_index+i + 1];
-                            printf("---- %.*s\n", value->end - value->start, json_network + value->start);
+                            char* bias_value_str = strndup(json_network + value->start, value->end - value->start);
+                            layer_biases[bias_ind][i] = atof(bias_value_str);
+                            printf("---- %lf\n", layer_biases[bias_ind][i]);
                         }
                         token_index += bias_object_vector -> size;
                     }
                 }
                 ++ token_index;// Go to next object
             }
-        }
-        else {
+        } else {
             printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
             ++ token_index;
         }
@@ -240,20 +251,32 @@ Network* create_network(char * json_network){
         }
         */
     }
-    if(activation_size > 0 && activation_size != network -> number_of_layers){
-        printf("ERROR:Network:create_network:Activation array specified but the size is not the same as number of layers!");
+    printf("DEBUG:Memory activation: %s\n", activations[0]);
+    printf("DEBUG:Memory bias: %lf\n", layer_biases[0][1]);
+    
+    // Validate layer variables
+    if(activation_size > 0 && activation_size != network -> number_of_layers){//activation_size > 0 && 
+        printf("ERROR:Network:create_network:Activation array specified but the size is not the same as number of layers!\n");
         free_network(network);
         return NULL;
     }
+    
     // Free up memory
-    //free(activations);
+    //if(activations != NULL)free(activations);
+    //if(layer_biases != NULL) free(layer_biases);
+    //free(layer_weights);
+    //free(layer_weight_cols);
+    //if(layer_weight_rows != NULL)free(layer_weight_rows);
     return network;
 }
 
 void free_network(Network* network){
-    if(network -> layers != NULL && network -> number_of_layers > 0){
-        for(int i = 0; i < network -> number_of_layers; i ++)
-            free_layer(& network -> layers[i]);
+    printf("DEBUG:test %i\n",network -> number_of_layers);
+    if(network -> number_of_layers > 0){
+        printf("DEBUG:layer initialized %i\n",network -> number_of_layers);
+        for(int i = 0; i < network -> number_of_layers; i ++){
+            free_layer(& (network -> layers[i]));
+        }
     }
     free(network);
 }
