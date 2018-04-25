@@ -65,9 +65,11 @@ NetworkLayer* create_layer(int number_of_nodes, int input_length, double* weight
 }
 
 void free_layer(NetworkLayer* network_layer){
-    free(network_layer -> weights);
-    free(network_layer -> biases);
-    free(network_layer -> output);
+    if(network_layer){
+        free(network_layer -> weights);
+        free(network_layer -> biases);
+        free(network_layer -> output);
+    }
     free(network_layer);
 }
 
@@ -94,7 +96,7 @@ void create_ffnn_sigmoid_lookup() {
 */
 
 Network* create_network(char * json_network){
-    printf("Network:create_network:\n %s \n", json_network);
+    printf("Network:create_network:\n %s \n\n", json_network);
     
     jsmn_parser p;
 	jsmntok_t tokens[MAXIMUM_JSON_TOKEN_SIZE];
@@ -113,6 +115,7 @@ Network* create_network(char * json_network){
 	}
 
     Network* network = (Network *) malloc(sizeof(Network));
+    network -> number_of_layers = 0;
 
     printf("Network:create_network:parameters------------:\n");
     // Declare temporary parameters for constructing network layers
@@ -121,10 +124,12 @@ Network* create_network(char * json_network){
     int number_of_layers = 0;
     int activation_size = 0;
     double ** layer_biases = NULL;// Use alloca or malloc+free
+    int * layer_biases_vector_sizes = NULL;// Use alloca or malloc+free
     int layer_biases_size = 0;
     double ** layer_weights = NULL;// Use alloca or malloc+free
-    int * layer_weight_cols = NULL;// Use alloca or malloc+free
-    int * layer_weight_rows = NULL;// Use alloca or malloc+free
+    int * layer_weights_cols = NULL;// Use alloca or malloc+free
+    int * layer_weights_rows = NULL;// Use alloca or malloc+free
+    int * layer_weights_grid_sizes = NULL;// Use alloca or malloc+free
     int layer_weights_size = 0;
 
     int token_index = 1;
@@ -134,11 +139,12 @@ Network* create_network(char * json_network){
             jsmntok_t *activation_values = &tokens[++token_index];
 			if (activation_values->type != JSMN_ARRAY) {
                 printf("ERROR:Network:create_network:Invalid activation format:activations is not an array!");
-                break; /// We expect groups to be an array of strings 
+                free(network);
+                return NULL;
             }
             printf("-- activations:\n");
             ++ token_index; // Unwrap array.
-            activations = (char**) malloc(activation_values -> size * sizeof(char*));
+            activations = (char**) alloca(activation_values -> size * sizeof(char*));
             activation_size = activation_values -> size;
 			for (int i = 0; i < activation_values -> size; i++) {
 				jsmntok_t *value_token = &tokens[token_index+i];
@@ -155,7 +161,8 @@ Network* create_network(char * json_network){
             jsmntok_t *json_layer_sizes = &tokens[++token_index];
 			if (json_layer_sizes->type != JSMN_ARRAY) {
                 printf("ERROR:Network:create_network:Invalid network format:layerSizes is not an array!");
-                break; /// We expect groups to be an array of strings 
+                free(network);
+                return NULL;
             }
             network -> layer_sizes = (int *) alloca(json_layer_sizes -> size * sizeof(int));
             number_of_layers = json_layer_sizes -> size - 1;
@@ -174,16 +181,19 @@ Network* create_network(char * json_network){
                 }
 			}
 			token_index += json_layer_sizes -> size;
-        }
-        else if(json_key_check(json_network, &tokens[token_index], "biases") == 0){
+        } else if(json_key_check(json_network, &tokens[token_index], "biases") == 0){
             jsmntok_t *bias_objects = &tokens[++token_index];
             if (bias_objects->type != JSMN_ARRAY) {
                 printf("ERROR:Network:create_network:Invalid network format:biases is not an array!");
-                break; /// We expect groups to be an array of objects 
+                free(network);
+                return NULL;
             }
             ++ token_index; // Unwrap array.
             printf("-- biases:\n");
+            layer_biases_size = bias_objects -> size;
             layer_biases = (double **) alloca(bias_objects -> size * sizeof(double *));
+            layer_biases_vector_sizes = (int *) alloca(bias_objects -> size * sizeof(int));
+
             for(int bias_ind = 0; bias_ind < bias_objects -> size; bias_ind ++){
                 jsmntok_t *bias_object = &tokens[token_index];
                 ++ token_index; // Unwrap biasObject
@@ -193,87 +203,153 @@ Network* create_network(char * json_network){
                         ++ token_index; // access vector value
                         jsmntok_t *bias_object_vector = &tokens[token_index];
                         layer_biases[bias_ind] = (double *) alloca(bias_object_vector -> size * sizeof(double));
+                        layer_biases_vector_sizes[bias_ind] = bias_object_vector -> size;
                         printf("---- vector:\n");
                         for (int i = 0; i < bias_object_vector -> size; i++) {
                             jsmntok_t *value = &tokens[token_index+i + 1];
                             char* bias_value_str = strndup(json_network + value->start, value->end - value->start);
                             layer_biases[bias_ind][i] = atof(bias_value_str);
-                            printf("---- %lf\n", layer_biases[bias_ind][i]);
+                            printf("------ %lf\n", layer_biases[bias_ind][i]);
                         }
                         token_index += bias_object_vector -> size;
+                    }else{
+                        printf("ERROR:Network:create_network:Unexpected key in bias object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+                        free(network);
+                        return NULL;
+                    }
+                }
+                ++ token_index;// Go to next object
+            }
+        } else if(json_key_check(json_network, &tokens[token_index], "weights") == 0){
+            jsmntok_t *weight_objects = &tokens[++token_index];
+            if (weight_objects->type != JSMN_ARRAY) {
+                printf("ERROR:Network:create_network:Invalid network format:weights is not an array!");
+                free(network);
+                return NULL;
+            }
+            ++ token_index; // Unwrap array.
+            printf("-- weights:\n");
+            layer_weights_size = weight_objects -> size;
+            layer_weights = (double **) alloca(weight_objects -> size * sizeof(double *));
+            layer_weights_cols = (int *) alloca(weight_objects -> size * sizeof(int));
+            layer_weights_rows= (int *) alloca(weight_objects -> size * sizeof(int));
+            layer_weights_grid_sizes= (int *) alloca(weight_objects -> size * sizeof(int));
+
+            for(int weight_ind = 0; weight_ind < weight_objects -> size; weight_ind ++){
+                jsmntok_t *weight_object = &tokens[token_index];
+                ++ token_index; // Unwrap weightObject
+
+                for(int weight_object_token_ind = 0; weight_object_token_ind < weight_object -> size; weight_object_token_ind++){
+                    if (json_key_check(json_network, &tokens[token_index], "col") == 0) {
+                        char* col_str = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
+                        layer_weights_cols[weight_ind] = atoi(col_str);
+                        printf("---- col: %i\n", layer_weights_cols[weight_ind]);
+                        token_index += 2;
+                    } else if (json_key_check(json_network, &tokens[token_index], "row") == 0) {
+                        char* row_str = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
+                        layer_weights_rows[weight_ind] = atoi(row_str);
+                        printf("---- row: %i\n", layer_weights_rows[weight_ind]);
+                        token_index += 2;
+                    } else if(json_key_check(json_network, &tokens[token_index], "grid") == 0){
+                        ++ token_index; // access vector value
+                        jsmntok_t *weight_object_grid = &tokens[token_index];
+                        layer_weights[weight_ind] = (double *) alloca(weight_object_grid -> size * sizeof(double));
+                        printf("---- grid:\n");
+                        layer_weights_grid_sizes[weight_ind] = weight_object_grid -> size;
+                        for (int i = 0; i < weight_object_grid -> size; i++) {
+                            jsmntok_t *value = &tokens[token_index+i + 1];
+                            char* weight_value_str = strndup(json_network + value->start, value->end - value->start);
+                            layer_weights[weight_ind][i] = atof(weight_value_str);
+                            printf("------ %lf\n", layer_weights[weight_ind][i]);
+                        }
+                        token_index += weight_object_grid -> size;
+                    }else{
+                        printf("ERROR:Network:create_network:Unexpected key in weight object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+                        free(network);
+                        return NULL;
                     }
                 }
                 ++ token_index;// Go to next object
             }
         } else {
-            printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
-            ++ token_index;
+            //printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+            //++ token_index;
+            printf("ERROR:Network:create_network:Unexpected key JSON object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+            free(network);
+            return NULL;
         }
-        /*
-        else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "weights") == 0){
-            jsmntok_t * weightObjects = &tokens[++tokenIndex];
-            if (weightObjects->type != JSMN_ARRAY) {
-                printf("ERROR:Invalid network format:weights is not an array!");
-                break; /// We expect groups to be an array of strings 
-            }
-            printf("* weights:\n");
-            
-            for(int weightIndex = 0; weightIndex < weightObjects -> size; weightIndex ++){
-                jsmntok_t *weightObject = &tokens[tokenIndex + 1];
-                //printf("DEBUG: weight objects: %.*s\n", weightObject->end - weightObject->start, jsonNetwork + weightObject->start);
-                //printf("DEBUG: weight size: %d\n", weightObject->size);
-                ++ tokenIndex; // Unwrap weightObject
-                for(int weightObjectToken = 0; weightObjectToken < weightObject -> size; weightObjectToken++){
-                    if(json_key_check(jsonNetwork, &tokens[tokenIndex + 1], "col")){
-                        jsmntok_t *colToken = &tokens[tokenIndex + 2];
-                        printf("*-- col: %.*s\n", colToken->end - colToken->start, jsonNetwork + colToken->start);
-                        tokenIndex +=2;
-                    }else if(json_key_check(jsonNetwork, &tokens[tokenIndex + 1], "row")){
-                        jsmntok_t *colToken = &tokens[tokenIndex + 2];
-                        printf("*-- row: %.*s\n", colToken->end - colToken->start, jsonNetwork + colToken->start);
-                        tokenIndex +=2;
-                    }else if(json_key_check(jsonNetwork, &tokens[tokenIndex + 1], "grid")){
-                        tokenIndex +=2; // access vector's value & unwrap array
-                        jsmntok_t *weightObjectGrid = &tokens[tokenIndex];
-                        printf("*-- grid:\n");
+    }
+    // printf("DEBUG:Memory activation: %s\n", activations[0]);
+    // printf("DEBUG:Memory bias: %lf\n", layer_biases[0][1]);
+    // printf("DEBUG:Memory weights: %lf\n", layer_weights[0][1]);
 
-                        for (int i = 0; i < weightObjectGrid -> size; i++) {
-                            jsmntok_t *value = &tokens[tokenIndex+i + 1];
-                            printf("*---- %.*s\n", value->end - value->start, jsonNetwork + value->start);
-                        }
-                        tokenIndex += weightObjectGrid -> size;
-                    }else{
-                        printf("ERROR:Invalid network format:Unexpected key in weight object! %.*s", tokens[tokenIndex+1].end-tokens[tokenIndex+1].start, jsonNetwork + tokens[tokenIndex+1].start);
-                    }
+    // Validate network local variables
+    if(number_of_layers > 0 && number_of_layers == layer_weights_size && number_of_layers == layer_biases_size){
+        if(activation_size == number_of_layers || activation_universal != NULL){
+            network -> layers = (NetworkLayer *) calloc(number_of_layers, sizeof(NetworkLayer *));
+            network -> number_of_layers = number_of_layers;
+            int success = 0; char * layer_activation = NULL;
+            for (int i = 0; i < number_of_layers; i ++){
+                if(layer_biases_vector_sizes[i] != network -> layer_sizes[i + 1]){
+                    printf("ERROR:Network:create_network:Invalid bias vector size:\n");
+                    success = 1;
+                    break;
                 }
+                if(layer_weights_cols[i] != network -> layer_sizes[i]){
+                    printf("ERROR:Network:create_network:Invalid weight col size:\n");
+                    success = 1;
+                    break;
+                }
+                if(layer_weights_rows[i] != network -> layer_sizes[i+1]){
+                    printf("ERROR:Network:create_network:Invalid weight col size:\n");
+                    success = 1;
+                    break;
+                }
+                if(layer_weights_grid_sizes[i] != network -> layer_sizes[i] * network -> layer_sizes[i + 1]){
+                    printf("ERROR:Network:create_network:Invalid weight grid size:\n");
+                    success = 1;
+                    break;
+                }
+                // Construct neural network layers
+                if(activation_size == number_of_layers) layer_activation = activations[i];
+                else layer_activation = activation_universal;
+                double * weights = (double*) malloc(layer_weights_grid_sizes[i] * sizeof(double));
+                double * biases = (double*) malloc(layer_biases_vector_sizes[i] * sizeof(double));
+
+                memcpy(weights, layer_weights[i], layer_weights_grid_sizes[i] * sizeof(double));
+                memcpy(biases, layer_biases[i], layer_biases_vector_sizes[i] * sizeof(double));
+
+                network -> layers[i] = *create_layer(network -> layer_sizes[i+1], network -> layer_sizes[i], weights, biases, layer_activation);
             }
-            ++ tokenIndex;
+            if(success == 0){
+                network -> input_length = network -> layer_sizes[0];
+                network -> output_length = network -> layer_sizes[number_of_layers];
+                network -> output = network -> layers[number_of_layers - 1].output;
+                return network;
+            }
         }
-        */
+        else{
+            printf("ERROR:Network:create_network:Invalid activation:\n");
+        }
+    }else{
+        printf("ERROR:Network:create_network:Number of layers does not match layer biases and layer weights:\n");
     }
-    printf("DEBUG:Memory activation: %s\n", activations[0]);
-    printf("DEBUG:Memory bias: %lf\n", layer_biases[0][1]);
     
-    // Validate layer variables
-    if(activation_size > 0 && activation_size != network -> number_of_layers){//activation_size > 0 && 
-        printf("ERROR:Network:create_network:Activation array specified but the size is not the same as number of layers!\n");
-        free_network(network);
-        return NULL;
-    }
+    // Failed to create a network, free memory and return
+    free_network(network);
+    return NULL;
     
     // Free up memory
-    //if(activations != NULL)free(activations);
-    //if(layer_biases != NULL) free(layer_biases);
+    //free(activations);
+    //free(layer_biases);
     //free(layer_weights);
     //free(layer_weight_cols);
-    //if(layer_weight_rows != NULL)free(layer_weight_rows);
-    return network;
+    //free(layer_weight_rows);
 }
 
 void free_network(Network* network){
-    printf("DEBUG:test %i\n",network -> number_of_layers);
-    if(network -> number_of_layers > 0){
-        printf("DEBUG:layer initialized %i\n",network -> number_of_layers);
+    if(network != NULL && network -> number_of_layers > 0){
+        printf("DEBUG:layer initialized %i\n", network -> number_of_layers);
         for(int i = 0; i < network -> number_of_layers; i ++){
             free_layer(& (network -> layers[i]));
         }
