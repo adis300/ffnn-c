@@ -17,8 +17,7 @@ int test_layer(){
     double * biases = (double *) malloc(numberOfNodes * sizeof(double));
     biases[0] = 1.0; biases[1] = 2.0; biases[2] = 3.0;
 
-    double * inputs = (double *) alloca(inputLength * sizeof(double));
-    inputs[0] = 1.0; inputs[1] = 2.0; inputs[2] = 3.0; inputs[3] = 4.0;
+    double input[4] = {1.0, 2.0, 3.0, 4.0};
 
     double * weights = (double *) malloc(numberOfNodes * inputLength * sizeof(double));
     weights[0] = 1.0; weights[1] = 2.0; weights[2] = 3.0; weights[3] = 4.0;
@@ -38,7 +37,7 @@ int test_layer(){
         return 1;
     }
 
-    double * output = run_layer(layer, inputs);
+    double * output = run_layer(layer, (double*) &input);
     if(fabs(output[0] - 31.0) > 0.001 || fabs(output[1] - 32.0) > 0.001 || fabs(output[2] - 33.0) > 0.001){
         printf("ERROR:test_create_layer:incorrect layer response:%lf,%lf, %lf \n", output[0],output[1],output[2]);
         return 1;
@@ -53,9 +52,9 @@ int test_create_network(){
     Network* network = create_network(JSON_NETWORK);
     if(network == NULL) return 1;
 
-    double * input = (double *) alloca(3 * sizeof(double));
-    input[0] = 1.0; input[1] = 1.0; input[2] = 1.0;
-    double * output = run_network(network, input);
+    double input[3] = {1.0, 1.0, 1.0};
+
+    double * output = run_network(network, (double*) &input);
 
     if(fabs(output[0] - 7.0) > 0.001 || fabs(output[1] - 7.0) > 0.001){
         printf("ERROR:test_create_network:incorrect network response:%lf,%lf \n", output[0],output[1]);

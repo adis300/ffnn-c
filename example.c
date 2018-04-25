@@ -12,9 +12,8 @@ void activation_by_layer(){
 
     Network* network = create_network(JSON_NETWORK_ACTIVATION_BY_LAYERS);
 
-    double * input = (double *) alloca(3 * sizeof(double));
-    input[0] = 1.0; input[1] = 1.0; input[2] = 1.0;
-    double * output = run_network(network, input);
+    double input[3] = {1.0, 1.0, 1.0};
+    double * output = run_network(network, (double*) &input);
 
     printf("Network response:%lf,%lf \n", output[0],output[1]);
 
@@ -28,9 +27,9 @@ void activation_universal(){
 
     Network* network = create_network(JSON_NETWORK_UNIVERSAL_ACTIVATION);
 
-    double * input = (double *) alloca(3 * sizeof(double));
-    input[0] = 1.0; input[1] = 1.0; input[2] = 1.0;
-    double * output = run_network(network, input);
+    // double * input = (double *) alloca(3 * sizeof(double));
+    double input[3] = {1.0, 1.0, 1.0};
+    double * output = run_network(network, (double*) &input);
 
     printf("Network response:%lf,%lf \n", output[0],output[1]);
 

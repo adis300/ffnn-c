@@ -360,10 +360,7 @@ Network* create_network(char * json_network){
 
 void free_network(Network* network){
     if(network != NULL && network -> number_of_layers > 0){
-        // printf("DEBUG:layer initialized %i\n", network -> number_of_layers);
-        for(int i = 0; i < network -> number_of_layers; i ++){
-            free_layer(network -> layers[i]);
-        }
+        for(int i = 0; i < network -> number_of_layers; i ++) free_layer(network -> layers[i]);
     }
     free(network);
 }
