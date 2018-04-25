@@ -114,7 +114,7 @@ Network* create_network(char * json_network){
 
     Network* network = (Network *) malloc(sizeof(Network));
 
-    printf("Network:create_network:parameters:\n");
+    printf("Network:create_network:parameters------------:\n");
     int token_index = 1;
     //char * activationHidden = ;
 	/* Loop over all keys of the root object */
@@ -122,25 +122,41 @@ Network* create_network(char * json_network){
         if (json_key_check(json_network, &tokens[token_index], "activationHidden") == 0) {
 			/// We may use strndup() to fetch string value
             network -> activation_hidden = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
-			printf("*Network:create_network:parameters-activationHidden: %s\n", network -> activation_hidden);
+			printf("-- activationHidden: %s\n", network -> activation_hidden);
             token_index += 2;
-		}if (json_key_check(json_network, &tokens[token_index], "activationOutput") == 0) {
+		} else if (json_key_check(json_network, &tokens[token_index], "activationOutput") == 0) {
 			/// We may use strndup() to fetch string value
             network -> activation_output = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
-			printf("*Network:create_network:parameters-activationOutput: %s\n", network -> activation_output);
+			printf("-- activationOutput: %s\n", network -> activation_output);
             token_index += 2;
-		}
+		} else if(json_key_check(json_network, &tokens[token_index], "layerSizes") == 0){
+            jsmntok_t *layer_sizes = &tokens[++token_index];
+			if (layer_sizes->type != JSMN_ARRAY) {
+                printf("ERROR:Network:create_network:Invalid network format:layerSizes is not an array!");
+                break; /// We expect groups to be an array of strings 
+            }
+            printf("-- layerSizes:\n");
+            ++ token_index; // Unwrap array.
+            network -> layer_node_length_with_input = (int*) malloc(layer_sizes -> size * sizeof(int));
+
+			for (int i = 0; i < layer_sizes -> size; i++) {
+				jsmntok_t *value_token = &tokens[token_index+i];
+                char* layer_size = strndup(json_network + value_token->start, value_token->end - value_token->start);
+				printf("---- %s\n", layer_size);
+                network -> layer_node_length_with_input[i] = atoi(layer_size);
+                if(network -> layer_node_length_with_input[i] == 0) {
+                    printf("ERROR:Network:create_network:Invalid node size in layerSizes is not an integer: %s!", layer_size);
+                    return NULL;
+                }
+			}
+			token_index += layer_sizes -> size;
+        }
         else {
             printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
             ++ token_index;
         }
         /*
-        else if (json_key_check(jsonNetwork, &tokens[tokenIndex], "activationOutput") == 0) {
-			/// We may use strndup() to fetch string value
-			printf("* ActivationOutput: %.*s\n", tokens[tokenIndex + 1].end-tokens[tokenIndex + 1].start,
-					jsonNetwork + tokens[tokenIndex + 1].start);
-            tokenIndex += 2;
-		}else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "layerSizes") == 0){
+        else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "layerSizes") == 0){
             jsmntok_t *layerValues = &tokens[++tokenIndex];
 			if (layerValues->type != JSMN_ARRAY) {
                 printf("ERROR:Invalid network format:layerSizes is not an array!");
