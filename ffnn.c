@@ -114,8 +114,8 @@ Network* create_network(char * json_network){
 		return NULL;
 	}
 
-    Network* network = (Network *) malloc(sizeof(Network));
-    network -> number_of_layers = 0;
+    Network* network = (Network *) calloc(1,sizeof(Network));
+    // network -> number_of_layers = 0;
 
     printf("Network:create_network:parameters------------:\n");
     // Declare temporary parameters for constructing network layers
@@ -286,7 +286,7 @@ Network* create_network(char * json_network){
     // Validate network local variables
     if(number_of_layers > 0 && number_of_layers == layer_weights_size && number_of_layers == layer_biases_size){
         if(activation_size == number_of_layers || activation_universal != NULL){
-            network -> layers = (NetworkLayer *) calloc(number_of_layers, sizeof(NetworkLayer *));
+            network -> layers = (NetworkLayer **) calloc(number_of_layers, sizeof(NetworkLayer *));
             network -> number_of_layers = number_of_layers;
             int success = 0; char * layer_activation = NULL;
             for (int i = 0; i < number_of_layers; i ++){
@@ -316,15 +316,26 @@ Network* create_network(char * json_network){
                 double * weights = (double*) malloc(layer_weights_grid_sizes[i] * sizeof(double));
                 double * biases = (double*) malloc(layer_biases_vector_sizes[i] * sizeof(double));
 
+                /*
+                for(int j = 0; j < layer_weights_grid_sizes[i]; j ++) {
+                    printf("--- DEBUG: weight %lf\n", layer_weights[i][j]);
+                    weights[j] = layer_weights[i][j];
+                    printf("--- DEBUG: copied weight %lf\n", weights[j]);
+                }
+
+                printf("DEBUG: weights %lf, %lf, %lf, %lf\n",layer_weights[i][0],layer_weights[i][1],layer_weights[i][2],layer_weights[i][3]);
+                */
+                for(int k = 0; k < layer_biases_vector_sizes[i]; k ++) biases[k] = layer_biases[i][k];
                 memcpy(weights, layer_weights[i], layer_weights_grid_sizes[i] * sizeof(double));
                 memcpy(biases, layer_biases[i], layer_biases_vector_sizes[i] * sizeof(double));
-
-                network -> layers[i] = *create_layer(network -> layer_sizes[i+1], network -> layer_sizes[i], weights, biases, layer_activation);
+                NetworkLayer * layer = create_layer(network -> layer_sizes[i+1], network -> layer_sizes[i], weights, biases, layer_activation);
+                // printf("DEBUG: copied weights %lf, %lf, %lf, %lf\n",weights[0], weights[1],weights[2],weights[3]);
+                network -> layers[i] = layer;
             }
             if(success == 0){
                 network -> input_length = network -> layer_sizes[0];
                 network -> output_length = network -> layer_sizes[number_of_layers];
-                network -> output = network -> layers[number_of_layers - 1].output;
+                network -> output = network -> layers[number_of_layers - 1] -> output;
                 return network;
             }
         }
@@ -349,15 +360,20 @@ Network* create_network(char * json_network){
 
 void free_network(Network* network){
     if(network != NULL && network -> number_of_layers > 0){
-        printf("DEBUG:layer initialized %i\n", network -> number_of_layers);
+        // printf("DEBUG:layer initialized %i\n", network -> number_of_layers);
         for(int i = 0; i < network -> number_of_layers; i ++){
-            free_layer(& (network -> layers[i]));
+            free_layer(network -> layers[i]);
         }
     }
     free(network);
 }
 
-double * run (Network* network, double * input){
-    return 0;
+double * run_network (Network* network, double * input){
+    // Activate first layer with input
+    run_layer(network -> layers[0], input);
+    for(int i = 1; i < network -> number_of_layers; i ++){
+        run_layer(network -> layers[i], network -> layers[i-1] -> output);
+    }
+    return network -> output;
 }
 

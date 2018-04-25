@@ -47,7 +47,7 @@ typedef struct {
 
     // Stores network output
     double * output;
-    NetworkLayer * layers;
+    NetworkLayer ** layers;
 
 } Network;
 
@@ -65,7 +65,7 @@ double * run_layer(NetworkLayer* network_layer, double* input);
 Network* create_network(char * json_network);
 void free_network(Network* network);
 
-double * run (Network* network, double * input);
+double * run_network (Network* network, double * input);
 
 #ifdef __cplusplus
 }
