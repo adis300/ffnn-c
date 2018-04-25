@@ -37,12 +37,9 @@ typedef struct {
 } NetworkLayer;
 
 typedef struct {
-    // Stores activation function names
-    char* activation_hidden;
-    char* activation_output;
     // Stores layer sizes and length 
-    int layer_length_with_input;
-    int * layer_node_length_with_input;
+    int number_of_layers;
+    int * layer_sizes;
     
     // Stores input and output length summary 
     int output_length;
@@ -66,6 +63,7 @@ double * run_layer(NetworkLayer* network_layer, double* input);
 
 // Network functions
 Network* create_network(char * json_network);
+void free_network(Network* network);
 
 double * run (Network* network, double * input);
 

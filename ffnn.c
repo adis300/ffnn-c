@@ -116,85 +116,90 @@ Network* create_network(char * json_network){
 
     printf("Network:create_network:parameters------------:\n");
     int token_index = 1;
-    //char * activationHidden = ;
+    char * activation_universal = NULL;
+    char ** activations = NULL;
+    int activation_size = 0;
+    
 	/* Loop over all keys of the root object */
     while (token_index < element_count) {
-        if (json_key_check(json_network, &tokens[token_index], "activationHidden") == 0) {
+        if (json_key_check(json_network, &tokens[token_index], "activations") == 0) {
+            jsmntok_t *activation_values = &tokens[++token_index];
+			if (activation_values->type != JSMN_ARRAY) {
+                printf("ERROR:Network:create_network:Invalid activation format:activations is not an array!");
+                break; /// We expect groups to be an array of strings 
+            }
+            printf("-- activations:\n");
+            ++ token_index; // Unwrap array.
+            activations = (char**) alloca(activation_values -> size * sizeof(char*));
+            activation_size = activation_values -> size;
+			for (int i = 0; i < activation_values -> size; i++) {
+				jsmntok_t *value_token = &tokens[token_index+i];
+                activations[i] = strndup(json_network + value_token->start, value_token->end - value_token->start);
+				printf("---- %s\n", activations[i]);
+			}
+			token_index += activation_values -> size;
+		} else if (json_key_check(json_network, &tokens[token_index], "activation") == 0) {
 			/// We may use strndup() to fetch string value
-            network -> activation_hidden = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
-			printf("-- activationHidden: %s\n", network -> activation_hidden);
-            token_index += 2;
-		} else if (json_key_check(json_network, &tokens[token_index], "activationOutput") == 0) {
-			/// We may use strndup() to fetch string value
-            network -> activation_output = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
-			printf("-- activationOutput: %s\n", network -> activation_output);
+            activation_universal = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
+            printf("-- universal activation: %s\n", activation_universal);
             token_index += 2;
 		} else if(json_key_check(json_network, &tokens[token_index], "layerSizes") == 0){
-            jsmntok_t *layer_sizes = &tokens[++token_index];
-			if (layer_sizes->type != JSMN_ARRAY) {
+            jsmntok_t *json_layer_sizes = &tokens[++token_index];
+			if (json_layer_sizes->type != JSMN_ARRAY) {
                 printf("ERROR:Network:create_network:Invalid network format:layerSizes is not an array!");
                 break; /// We expect groups to be an array of strings 
             }
-            printf("-- layerSizes:\n");
+            network -> layer_sizes = (int *) malloc(json_layer_sizes -> size * sizeof(int));
+            network -> number_of_layers = json_layer_sizes -> size - 1;
+            printf("-- numberOfLayers:%i (Not including input layer)\n", network -> number_of_layers);
             ++ token_index; // Unwrap array.
-            network -> layer_node_length_with_input = (int*) malloc(layer_sizes -> size * sizeof(int));
-
-			for (int i = 0; i < layer_sizes -> size; i++) {
+            printf("-- layerSizes:\n");
+			for (int i = 0; i < json_layer_sizes -> size; i++) {
 				jsmntok_t *value_token = &tokens[token_index+i];
                 char* layer_size = strndup(json_network + value_token->start, value_token->end - value_token->start);
 				printf("---- %s\n", layer_size);
-                network -> layer_node_length_with_input[i] = atoi(layer_size);
-                if(network -> layer_node_length_with_input[i] == 0) {
+                network -> layer_sizes[i] = atoi(layer_size);
+                if(network -> layer_sizes[i] == 0) {
                     printf("ERROR:Network:create_network:Invalid node size in layerSizes is not an integer: %s!", layer_size);
+                    free(network);
                     return NULL;
                 }
 			}
-			token_index += layer_sizes -> size;
+			token_index += json_layer_sizes -> size;
+        }
+        else if(json_key_check(json_network, &tokens[token_index], "biases") == 0){
+            jsmntok_t *bias_objects = &tokens[++token_index];
+            if (bias_objects->type != JSMN_ARRAY) {
+                printf("ERROR:Network:create_network:Invalid network format:biases is not an array!");
+                break; /// We expect groups to be an array of objects 
+            }
+            ++ token_index; // Unwrap array.
+            printf("-- biases:\n");
+            for(int bias_ind = 0; bias_ind < bias_objects -> size; bias_ind ++){
+                jsmntok_t *bias_object = &tokens[token_index];
+                ++ token_index; // Unwrap biasObject
+
+                for(int bias_object_token = 0; bias_object_token < bias_object -> size; bias_object_token++){
+                    if(json_key_check(json_network, &tokens[token_index + 1], "vector")){
+                        ++ token_index; // access vector value
+                        jsmntok_t *bias_object_vector = &tokens[token_index];
+                        printf("---- vector:\n");
+                        for (int i = 0; i < bias_object_vector -> size; i++) {
+                            jsmntok_t *value = &tokens[token_index+i + 1];
+                            printf("---- %.*s\n", value->end - value->start, json_network + value->start);
+                        }
+                        token_index += bias_object_vector -> size;
+                    }
+                }
+                ++ token_index;// Go to next object
+            }
         }
         else {
             printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
             ++ token_index;
         }
         /*
-        else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "layerSizes") == 0){
-            jsmntok_t *layerValues = &tokens[++tokenIndex];
-			if (layerValues->type != JSMN_ARRAY) {
-                printf("ERROR:Invalid network format:layerSizes is not an array!");
-                break; /// We expect groups to be an array of strings 
-            }
-            printf("* LayerSizes:\n");
-            ++ tokenIndex; // Unwrap array.
-			for (int i = 0; i < layerValues -> size; i++) {
-				jsmntok_t *valueToken = &tokens[tokenIndex+i];
-				printf("*-- %.*s\n", valueToken->end - valueToken->start, jsonNetwork + valueToken->start);
-			}
-			tokenIndex += layerValues -> size;
-        } else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "biases") == 0){
-            jsmntok_t *biasObjects = &tokens[++tokenIndex];
-            if (biasObjects->type != JSMN_ARRAY) {
-                printf("ERROR:Invalid network format:biases is not an array!");
-                break; /// We expect groups to be an array of strings 
-            }
-            printf("* biases:\n");
-            for(int biasIndex = 0; biasIndex < biasObjects -> size; biasIndex ++){
-                jsmntok_t *biasObject = &tokens[tokenIndex + 1];
-                ++ tokenIndex; // Unwrap biasObject
-                for(int biasObjectToken = 0; biasObjectToken < biasObject -> size; biasObjectToken++){
-                    if(json_key_check(jsonNetwork, &tokens[tokenIndex + 1], "vector")){
-                        tokenIndex +=2; // access vector's value & unwrap array
-                        jsmntok_t *biasObjectVector = &tokens[tokenIndex];
-                        printf("*-- vector:\n");
-
-                        for (int i = 0; i < biasObjectVector -> size; i++) {
-                            jsmntok_t *value = &tokens[tokenIndex+i + 1];
-                            printf("*---- %.*s\n", value->end - value->start, jsonNetwork + value->start);
-                        }
-                        tokenIndex += biasObjectVector -> size;
-                    }
-                }
-            }
-            ++ tokenIndex;
-        } else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "weights") == 0){
+        else if(json_key_check(jsonNetwork, &tokens[tokenIndex], "weights") == 0){
             jsmntok_t * weightObjects = &tokens[++tokenIndex];
             if (weightObjects->type != JSMN_ARRAY) {
                 printf("ERROR:Invalid network format:weights is not an array!");
@@ -235,7 +240,22 @@ Network* create_network(char * json_network){
         }
         */
     }
+    if(activation_size > 0 && activation_size != network -> number_of_layers){
+        printf("ERROR:Network:create_network:Activation array specified but the size is not the same as number of layers!");
+        free_network(network);
+        return NULL;
+    }
+    // Free up memory
+    //free(activations);
     return network;
+}
+
+void free_network(Network* network){
+    if(network -> layers != NULL && network -> number_of_layers > 0){
+        for(int i = 0; i < network -> number_of_layers; i ++)
+            free_layer(& network -> layers[i]);
+    }
+    free(network);
 }
 
 double * run (Network* network, double * input){
