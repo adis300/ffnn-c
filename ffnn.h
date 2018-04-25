@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#define MAXIMUM_JSON_TOKEN_SIZE 1024 // Assume only 256 keys are allowed
+#define MAXIMUM_JSON_TOKEN_SIZE 8192 // Assume about 8000 elements are allowed for the json network
 
 typedef double (*ActivationFunc)(double z);
 
