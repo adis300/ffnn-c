@@ -40,6 +40,10 @@ double inline ffnn_activation_sigmoid(double x) {
     return 1.0 / (1.0 + exp(-x));
 }
 
+double inline ffnn_activation_softmax(double x) {
+    return exp(x);
+}
+
 NetworkLayer* create_layer(int number_of_nodes, int input_length, double* weights, double * biases, const char* activation){
     // Layer activation function defaults to sigmoid
     NetworkLayer* network_layer = (NetworkLayer *) malloc(sizeof(NetworkLayer));
@@ -47,13 +51,23 @@ NetworkLayer* create_layer(int number_of_nodes, int input_length, double* weight
     network_layer -> input_length = input_length;
 
     // Initialize activation function
-    if (strcmp(activation, "linear") == 0) network_layer -> activation_func = ffnn_activation_linear;
-    else if (strcmp(activation, "relu") == 0) network_layer -> activation_func = ffnn_activation_relu;
+    if (strcmp(activation, "linear") == 0) {
+        network_layer -> activation_type = ACTIVATION_TYPE_LINEAR;
+        network_layer -> activation_func = ffnn_activation_linear;
+    }
+    else if (strcmp(activation, "relu") == 0) {
+        network_layer -> activation_type = ACTIVATION_TYPE_RELU;
+        network_layer -> activation_func = ffnn_activation_relu;
+    }
     else if (strcmp(activation, "threshold") == 0) {
-        printf("NetworkLayer:create_layer:loading a threshold function\n");
+        network_layer -> activation_type = ACTIVATION_TYPE_THRESHOLD;
         network_layer -> activation_func = ffnn_activation_threshold;
+    }else if (strcmp(activation, "softmax") == 0){
+        network_layer -> activation_type = ACTIVATION_TYPE_SOFTMAX;
+        network_layer -> activation_func = ffnn_activation_softmax;
     }
     else {
+        network_layer -> activation_type = ACTIVATION_TYPE_SIGMOID;
         printf("NetworkLayer:create_layer:loading a sigmoid function as default\n");
         network_layer -> activation_func = ffnn_activation_sigmoid;
     }
@@ -81,6 +95,14 @@ double * run_layer(NetworkLayer* network_layer, double* input){
             res += network_layer -> weights[node * network_layer -> input_length + i] * input[i];
         }
         network_layer -> output[node] = network_layer -> activation_func(res);
+    }
+    // Softmax activation support.
+    if (network_layer -> activation_type == ACTIVATION_TYPE_SOFTMAX){
+        double soft_sum = 0;
+        for(int node = 0; node < network_layer -> number_of_nodes; node ++)
+            soft_sum += network_layer -> output[node];
+        for(int node = 0; node < network_layer -> number_of_nodes; node ++)
+            network_layer -> output[node] /= soft_sum;
     }
     return network_layer -> output;
 }

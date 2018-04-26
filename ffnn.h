@@ -20,7 +20,15 @@ extern "C" {
 
 typedef double (*ActivationFunc)(double z);
 
+#define ACTIVATION_TYPE_SIGMOID 0
+#define ACTIVATION_TYPE_LINEAR 1
+#define ACTIVATION_TYPE_RELU 2
+#define ACTIVATION_TYPE_THRESHOLD 3
+#define ACTIVATION_TYPE_SOFTMAX 4
+
 typedef struct {
+
+    int activation_type;
 
     ActivationFunc activation_func;
 
@@ -50,11 +58,6 @@ typedef struct {
     NetworkLayer ** layers;
 
 } Network;
-
-double ffnn_activation_sigmoid(double x);
-double ffnn_activation_threshold(double x);
-double ffnn_activation_linear(double x);
-double ffnn_activation_relu(double x);
 
 // Layer functions
 NetworkLayer* create_layer(int numberOfNodes, int inputLength, double* weights, double * biases, const char* activation);
