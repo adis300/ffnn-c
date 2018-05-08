@@ -25,22 +25,22 @@
 // double sigmoid_lookup[LOOKUP_SIZE];
 
 // Activation functions
-double inline ffnn_activation_linear(double x) { return x;}
+extern inline double ffnn_activation_linear(double x) { return x;}
 
-double inline ffnn_activation_threshold(double x) {return x > 0;}
+extern inline double ffnn_activation_threshold(double x) {return x > 0;}
 
-double inline ffnn_activation_relu(double x) {
+extern inline double ffnn_activation_relu(double x) {
     if(x > 0) return x;
     return 0;
 }
 
-double inline ffnn_activation_sigmoid(double x) {
+extern inline double ffnn_activation_sigmoid(double x) {
     if (x < -SIGMOID_CUTOFF) return 0.0;
     if (x > SIGMOID_CUTOFF) return 1.0;
     return 1.0 / (1.0 + exp(-x));
 }
 
-double inline ffnn_activation_softmax(double x) {
+extern inline double ffnn_activation_softmax(double x) {
     return exp(x);
 }
 

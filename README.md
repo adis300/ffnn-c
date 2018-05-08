@@ -9,8 +9,8 @@ For any questions please contact adis@brainco.tech.
 
 # Running examples and tests with Makefile
 ```
-make test && ./test
-make example && ./example
+make clean && make test && ./test
+make clean && make example && ./example
 ```
 
 # Getting started

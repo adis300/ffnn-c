@@ -3,10 +3,14 @@ LDLIBS = -lm
 
 all: test example
 
-test: test.o ffnn.o
+ffnn.o: ffnn.c network.pb-c.o
 
-example: example.o ffnn.o
+network.pb-c.o: extra/network.pb-c.c
+
+test: ffnn.o
+
+example: ffnn.o
 
 clean:
 	$(RM) *.o
-	$(RM) test ffnn *.exe
+	$(RM) test example extra/network.pb-c.o *.exe
