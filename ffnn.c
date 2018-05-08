@@ -15,6 +15,7 @@
 #include <math.h>
 #include <string.h>
 #include "extra/jsmn.c"
+#include "extra/network.pb-c.h"
 
 #define LOOKUP_SIZE 4096
 #define SIGMOID_CUTOFF 45.0
@@ -117,8 +118,91 @@ void create_ffnn_sigmoid_lookup() {
 }
 */
 
-Network* create_network(char * json_network){
-    printf("Network:create_network:\n %s \n\n", json_network);
+Network* create_network_from_protobuf(void * proto_network_data, int data_size){
+    Ffnn__Network* unpacked_network = ffnn__network__unpack(NULL, data_size, (uint8_t*)proto_network_data);
+    if(unpacked_network == NULL) {
+        printf("Error:ffnn:create_network_from_protobuf:unable to parse protobuf content\n");
+        return NULL;
+    }
+    // Validate network
+    if(unpacked_network-> n_layersizes < 2){
+        printf("Error:ffnn:create_network_from_protobuf:layersizes too small.\n");
+        ffnn__network__free_unpacked(unpacked_network, NULL);
+        return NULL;
+    }
+    size_t layer_count = unpacked_network-> n_layersizes - 1;
+    if(unpacked_network -> n_weights != layer_count || unpacked_network -> n_biases != layer_count || unpacked_network -> n_activations != layer_count){
+        printf("Error:ffnn:create_network_from_protobuf:inconsistent layer content.\n");
+        ffnn__network__free_unpacked(unpacked_network, NULL);
+        return NULL;
+    }
+
+    Network* network = (Network *) malloc(sizeof(Network));
+    network-> layer_sizes = (int*) malloc(unpacked_network-> n_layersizes * sizeof(int));
+    network-> layer_sizes[0] = unpacked_network->layersizes[0];
+    network -> number_of_layers = layer_count;
+    network -> output_length = unpacked_network -> layersizes[layer_count];
+    network -> input_length = unpacked_network -> layersizes[0];
+    network -> layers = (NetworkLayer **) calloc(layer_count, sizeof(NetworkLayer*));
+
+    printf("Network:create_network_from_proto:parsing:\n");
+
+    for(unsigned int i = 0; i < layer_count; i ++){
+        network-> layer_sizes[i+1] = unpacked_network -> layersizes[i+1];
+        Ffnn__Weight* weight_node = unpacked_network -> weights[i];
+        Ffnn__Bias* bias_node = unpacked_network -> biases[i];
+        int invalid_layer = 0;
+        if(weight_node -> col * weight_node -> row != weight_node -> n_grid) invalid_layer = 1;
+        if(weight_node -> col != network-> layer_sizes[i] || weight_node -> row != network-> layer_sizes[i+1]) invalid_layer = 1;
+    
+        if(bias_node -> n_vector != network-> layer_sizes[i + 1]) invalid_layer = 1;
+        
+        if(invalid_layer){
+            printf("ffnn:create_network_from_protobuf:Invalid layer contents.");
+            ffnn__network__free_unpacked(unpacked_network, NULL);
+            free_network(network);
+            return NULL;
+        }
+
+        double* weights = (double *) malloc(weight_node -> n_grid * sizeof(double));
+        memcpy(weights, weight_node -> grid, weight_node -> n_grid * sizeof(double));
+        double * biases = (double *) malloc(bias_node -> n_vector * sizeof(double));
+        memcpy(biases, bias_node -> vector, bias_node -> n_vector * sizeof(double));
+        char * activation;
+        switch(unpacked_network -> activations[i]){
+            case FFNN__NETWORK__ACTIVATION_TYPE__SIGMOID:
+                activation = "sigmoid";
+                break;
+            case FFNN__NETWORK__ACTIVATION_TYPE__LINEAR:
+                activation = "linear";
+                break;
+            case FFNN__NETWORK__ACTIVATION_TYPE__RELU:
+                activation = "relu";
+                break;
+            case FFNN__NETWORK__ACTIVATION_TYPE__THRESHOLD:
+                activation = "threshold";
+                break;
+            case FFNN__NETWORK__ACTIVATION_TYPE__SOFTMAX:
+                activation = "softmax";
+                break;
+            default:
+                printf("ffnn:create_network_from_protobuf:unrecognized activation:%i", unpacked_network -> activations[i]);
+                activation = "sigmoid";
+                break;
+        }
+        NetworkLayer * layer = create_layer(network -> layer_sizes[i+1], network -> layer_sizes[i], weights, biases, activation);
+        network -> layers[i] = layer;
+    }
+    network -> output = network -> layers[layer_count - 1] -> output;
+    
+    printf("Network:create_network_from_proto:parsing finished:\n");
+
+    ffnn__network__free_unpacked(unpacked_network, NULL);
+    return network;
+}
+
+Network* create_network_from_json(char * json_network){
+    printf("Network:create_network_from_json:\n %s \n\n", json_network);
     
     jsmn_parser p;
 	jsmntok_t tokens[MAXIMUM_JSON_TOKEN_SIZE];
@@ -126,20 +210,20 @@ Network* create_network(char * json_network){
 	jsmn_init(&p);
 	int element_count = jsmn_parse(&p, json_network, strlen(json_network), tokens, MAXIMUM_JSON_TOKEN_SIZE);//sizeof(tokens)/sizeof(tokens[0]));
 	if (element_count < 0) {
-		printf("Network:create_network:Failed to parse JSON: %d\n", element_count);
+		printf("Network:create_network_from_json:Failed to parse JSON: %d\n", element_count);
 		return NULL;
 	}
 
 	/* Assume the top-level element is an object */
 	if (element_count < 1 || tokens[0].type != JSMN_OBJECT) {
-		printf("Network:create_network:JSON object expected\n");
+		printf("Network:create_network_from_json:JSON object expected\n");
 		return NULL;
 	}
 
     Network* network = (Network *) calloc(1,sizeof(Network));
     // network -> number_of_layers = 0;
 
-    printf("Network:create_network:parameters------------:\n");
+    printf("Network:create_network_from_json:parameters------------:\n");
     // Declare temporary parameters for constructing network layers
     char * activation_universal = NULL;
     char ** activations = NULL;// Use alloca or malloc+free
@@ -160,7 +244,7 @@ Network* create_network(char * json_network){
         if (json_key_check(json_network, &tokens[token_index], "activations") == 0) {
             jsmntok_t *activation_values = &tokens[++token_index];
 			if (activation_values->type != JSMN_ARRAY) {
-                printf("ERROR:Network:create_network:Invalid activation format:activations is not an array!");
+                printf("ERROR:Network:create_network_from_json:Invalid activation format:activations is not an array!");
                 free(network);
                 return NULL;
             }
@@ -182,7 +266,7 @@ Network* create_network(char * json_network){
 		} else if(json_key_check(json_network, &tokens[token_index], "layerSizes") == 0){
             jsmntok_t *json_layer_sizes = &tokens[++token_index];
 			if (json_layer_sizes->type != JSMN_ARRAY) {
-                printf("ERROR:Network:create_network:Invalid network format:layerSizes is not an array!");
+                printf("ERROR:Network:create_network_from_json:Invalid network format:layerSizes is not an array!");
                 free(network);
                 return NULL;
             }
@@ -197,7 +281,7 @@ Network* create_network(char * json_network){
 				printf("---- %s\n", layer_size);
                 network -> layer_sizes[i] = atoi(layer_size);
                 if(network -> layer_sizes[i] == 0) {
-                    printf("ERROR:Network:create_network:Invalid node size in layerSizes is not an integer: %s!", layer_size);
+                    printf("ERROR:Network:create_network_from_json:Invalid node size in layerSizes is not an integer: %s!", layer_size);
                     free(network);
                     return NULL;
                 }
@@ -206,7 +290,7 @@ Network* create_network(char * json_network){
         } else if(json_key_check(json_network, &tokens[token_index], "biases") == 0){
             jsmntok_t *bias_objects = &tokens[++token_index];
             if (bias_objects->type != JSMN_ARRAY) {
-                printf("ERROR:Network:create_network:Invalid network format:biases is not an array!");
+                printf("ERROR:Network:create_network_from_json:Invalid network format:biases is not an array!");
                 free(network);
                 return NULL;
             }
@@ -235,7 +319,7 @@ Network* create_network(char * json_network){
                         }
                         token_index += bias_object_vector -> size;
                     }else{
-                        printf("ERROR:Network:create_network:Unexpected key in bias object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+                        printf("ERROR:Network:create_network_from_json:Unexpected key in bias object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
                         free(network);
                         return NULL;
                     }
@@ -245,7 +329,7 @@ Network* create_network(char * json_network){
         } else if(json_key_check(json_network, &tokens[token_index], "weights") == 0){
             jsmntok_t *weight_objects = &tokens[++token_index];
             if (weight_objects->type != JSMN_ARRAY) {
-                printf("ERROR:Network:create_network:Invalid network format:weights is not an array!");
+                printf("ERROR:Network:create_network_from_json:Invalid network format:weights is not an array!");
                 free(network);
                 return NULL;
             }
@@ -286,7 +370,7 @@ Network* create_network(char * json_network){
                         }
                         token_index += weight_object_grid -> size;
                     }else{
-                        printf("ERROR:Network:create_network:Unexpected key in weight object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+                        printf("ERROR:Network:create_network_from_json:Unexpected key in weight object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
                         free(network);
                         return NULL;
                     }
@@ -296,7 +380,7 @@ Network* create_network(char * json_network){
         } else {
             //printf("Unexpected key: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
             //++ token_index;
-            printf("ERROR:Network:create_network:Unexpected key JSON object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
+            printf("ERROR:Network:create_network_from_json:Unexpected key JSON object: %.*s\n", tokens[token_index].end-tokens[token_index].start, json_network + tokens[token_index].start);
             free(network);
             return NULL;
         }
@@ -313,22 +397,22 @@ Network* create_network(char * json_network){
             int success = 0; char * layer_activation = NULL;
             for (int i = 0; i < number_of_layers; i ++){
                 if(layer_biases_vector_sizes[i] != network -> layer_sizes[i + 1]){
-                    printf("ERROR:Network:create_network:Invalid bias vector size:\n");
+                    printf("ERROR:Network:create_network_from_json:Invalid bias vector size:\n");
                     success = 1;
                     break;
                 }
                 if(layer_weights_cols[i] != network -> layer_sizes[i]){
-                    printf("ERROR:Network:create_network:Invalid weight col size:\n");
+                    printf("ERROR:Network:create_network_from_json:Invalid weight col size:\n");
                     success = 1;
                     break;
                 }
                 if(layer_weights_rows[i] != network -> layer_sizes[i+1]){
-                    printf("ERROR:Network:create_network:Invalid weight col size:\n");
+                    printf("ERROR:Network:create_network_from_json:Invalid weight col size:\n");
                     success = 1;
                     break;
                 }
                 if(layer_weights_grid_sizes[i] != network -> layer_sizes[i] * network -> layer_sizes[i + 1]){
-                    printf("ERROR:Network:create_network:Invalid weight grid size:\n");
+                    printf("ERROR:Network:create_network_from_json:Invalid weight grid size:\n");
                     success = 1;
                     break;
                 }
@@ -362,10 +446,10 @@ Network* create_network(char * json_network){
             }
         }
         else{
-            printf("ERROR:Network:create_network:Invalid activation:\n");
+            printf("ERROR:Network:create_network_from_json:Invalid activation:\n");
         }
     }else{
-        printf("ERROR:Network:create_network:Number of layers does not match layer biases and layer weights:\n");
+        printf("ERROR:Network:create_network_from_json:Number of layers does not match layer biases and layer weights:\n");
     }
     
     // Failed to create a network, free memory and return

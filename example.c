@@ -10,7 +10,7 @@ void activation_by_layer(){
 
     printf("----- EXAMPLE1: Activation by layer example -----\n");
 
-    Network* network = create_network(JSON_NETWORK_ACTIVATION_BY_LAYERS);
+    Network* network = create_network_from_json(JSON_NETWORK_ACTIVATION_BY_LAYERS);
 
     double input[3] = {1.0, 1.0, 1.0};
     double * output = run_network(network, (double*) &input);
@@ -25,7 +25,7 @@ void activation_universal(){
 
     printf("----- EXAMPLE2:Activation universal example -----\n");
 
-    Network* network = create_network(JSON_NETWORK_UNIVERSAL_ACTIVATION);
+    Network* network = create_network_from_json(JSON_NETWORK_UNIVERSAL_ACTIVATION);
 
     // double * input = (double *) alloca(3 * sizeof(double));
     double input[3] = {1.0, 1.0, 1.0};

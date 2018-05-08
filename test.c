@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "extra/network.pb-c.h"
 
 const int numberOfNodes = 3;
 const int inputLength = 4;
@@ -49,7 +50,7 @@ int test_layer(){
 }
 
 int test_create_network(){
-    Network* network = create_network(JSON_NETWORK);
+    Network* network = create_network_from_json(JSON_NETWORK);
     if(network == NULL) return 1;
 
     double input[3] = {1.0, 1.0, 1.0};
@@ -60,6 +61,83 @@ int test_create_network(){
         printf("ERROR:test_create_network:incorrect network response:%lf,%lf \n", output[0],output[1]);
         return 1;
     }
+    return 0;
+}
+int test_create_network_proto(){
+    Ffnn__Network proto_network = FFNN__NETWORK__INIT;
+    
+    Ffnn__Weight proto_weight1 = FFNN__WEIGHT__INIT;
+    Ffnn__Weight proto_weight2 = FFNN__WEIGHT__INIT;
+    Ffnn__Bias proto_bias1 = FFNN__BIAS__INIT;
+    Ffnn__Bias proto_bias2 = FFNN__BIAS__INIT;
+    //Ffnn__Weight * proto_weight1 = (Ffnn__Weight *) malloc(sizeof(Ffnn__Weight));
+    //ffnn__weight__init(proto_weight1);
+    //Ffnn__Weight * proto_weight2 = (Ffnn__Weight *) malloc(sizeof(Ffnn__Weight));
+    //ffnn__weight__init(proto_weight2);
+    //Ffnn__Bias * proto_bias1 = (Ffnn__Bias *) malloc(sizeof(Ffnn__Bias));
+    //ffnn__bias__init(proto_bias1);
+    //Ffnn__Bias * proto_bias2 = (Ffnn__Bias *) malloc(sizeof(Ffnn__Bias));
+    //ffnn__bias__init(proto_bias2);
+
+    // Set layers
+    int32_t* layer_sizes =(int32_t*) malloc(3 * sizeof(int32_t));
+    layer_sizes[0] = 3; layer_sizes[1] = 2; layer_sizes[2] = 2;
+    proto_network.layersizes = layer_sizes;
+    proto_network.n_layersizes = 3;
+    
+    // Set activations
+    Ffnn__Network__ActivationType* activations = (Ffnn__Network__ActivationType*) malloc(2* sizeof(int32_t));
+    activations[0] = FFNN__NETWORK__ACTIVATION_TYPE__RELU;
+    activations[1] = FFNN__NETWORK__ACTIVATION_TYPE__SOFTMAX;
+    proto_network.activations = activations;
+    proto_network.n_activations = 2;
+
+    // Set weights
+    proto_weight1.col=3;proto_weight1.row=2;proto_weight1.n_grid = 6;
+    double * weight1 = (double*) malloc(6* sizeof(double));
+    weight1[0] = 0.0;weight1[1] = 1.0;weight1[2] = 2.0;weight1[3] = 3.0;weight1[4] = 4.0;weight1[5] = 5.0;
+    proto_weight1.grid = weight1;
+
+    proto_weight2.col=2;proto_weight2.row=2;proto_weight2.n_grid = 4;
+    double * weight2 = (double*) malloc(4* sizeof(double));
+    weight2[0] = 0.0;weight2[1] = 1.0;weight2[2] = 2.0;weight2[3] = 3.0;
+    proto_weight2.grid = weight2;
+
+    Ffnn__Weight** weights = (Ffnn__Weight**) malloc(2 * sizeof(Ffnn__Weight*));
+    weights[0] = &proto_weight1; weights[1] = &proto_weight2;
+    proto_network.weights = weights;
+    proto_network.n_weights = 2;
+
+    // Set biases
+    proto_bias1.n_vector = 2;
+    double * bias1 = (double*) malloc(2* sizeof(double));
+    bias1[0] = 0.0;bias1[1] = 1.0;
+    proto_bias1.vector = bias1;
+
+    proto_bias2.n_vector = 2;
+    double * bias2 = (double*) malloc(2* sizeof(double));
+    bias2[0] = 0.0;bias2[1] = 1.0;
+    proto_bias2.vector = bias2;
+
+    Ffnn__Bias** biases = (Ffnn__Bias**) malloc(2 * sizeof(Ffnn__Bias*));
+    biases[0] = &proto_bias1; biases[1] = &proto_bias2;
+    proto_network.biases = biases;
+    proto_network.n_biases = 2;
+
+    size_t message_length = ffnn__network__get_packed_size(&proto_network);
+    uint8_t * protobuf = (uint8_t*)malloc(message_length);
+    ffnn__network__pack(&proto_network, protobuf);
+
+    // free useless variables
+    free(weight1); free(weight2); free(bias1); free(bias2);
+    free(layer_sizes); free(activations);free(biases); free(weights); 
+
+    Network * network = create_network_from_protobuf(protobuf, message_length);
+    if(network == NULL){
+        printf("ERROR:test_create_network_proto:unable to parse network.\n");
+        return 1;
+    }
+    free(protobuf);
     return 0;
 }
 
@@ -78,6 +156,12 @@ int main () //(int argc, char *argv[])
         printf("*** SUCCESS:test_create_network.\n");
     }else{
         printf("*** FAILURE:test_create_network!\n");
+        return 1;
+    }
+    if(test_create_network_proto() == 0){
+        printf("*** SUCCESS:test_create_network_proto.\n");
+    }else{
+        printf("*** FAILURE:test_create_network_proto!\n");
         return 1;
     }
 

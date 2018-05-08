@@ -1,16 +1,19 @@
 CFLAGS = -Wall -Wshadow -O3 -g -march=native
 LDLIBS = -lm
+LIBS=-libprotobuf-c
 
 all: test example
 
-ffnn.o: ffnn.c network.pb-c.o
+ffnn.o: ffnn.c extra/network.pb-c.o
 
-network.pb-c.o: extra/network.pb-c.c
+network.pb-c.o: extra/protobuf-c.o
+protobuf-c.o: extra/protobuf-c.c
 
-test: ffnn.o
+test: ffnn.o extra/network.pb-c.o extra/protobuf-c.o
 
-example: ffnn.o
+example: ffnn.o extra/network.pb-c.o extra/protobuf-c.o
 
 clean:
 	$(RM) *.o
-	$(RM) test example extra/network.pb-c.o *.exe
+	$(RM) extra/*.o
+	$(RM) test example *.exe

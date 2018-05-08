@@ -65,7 +65,9 @@ void free_layer(NetworkLayer* network_layer);
 double * run_layer(NetworkLayer* network_layer, double* input);
 
 // Network functions
-Network* create_network(char * json_network);
+Network* create_network_from_json(char * json_network);
+Network* create_network_from_protobuf(void * proto_network_data, int data_size);
+
 void free_network(Network* network);
 double * run_network (Network* network, double * input);
 
