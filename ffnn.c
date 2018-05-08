@@ -168,7 +168,7 @@ Network* create_network_from_protobuf(void * proto_network_data, int data_size){
         memcpy(weights, weight_node -> grid, weight_node -> n_grid * sizeof(double));
         double * biases = (double *) malloc(bias_node -> n_vector * sizeof(double));
         memcpy(biases, bias_node -> vector, bias_node -> n_vector * sizeof(double));
-        char * activation;
+        const char * activation;
         switch(unpacked_network -> activations[i]){
             case FFNN__NETWORK__ACTIVATION_TYPE__SIGMOID:
                 activation = "sigmoid";
