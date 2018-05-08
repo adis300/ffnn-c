@@ -52,7 +52,23 @@ printf("Network saved response: %lf,%lf \n", network -> output[0], network -> ou
 * Release memory of the network
 free_network(your_network);
 
+# Use protobuf to transfer network
 
+## Build proto-buf code from source on a Mac
+1. Prepare environments
+```
+brew install pkg-config
+brew install protobuf
+brew install automake
+brew install libtool
+
+cd into https://github.com/protobuf-c/protobuf-c
+./autogen.sh && ./configure && make && make install
+```
+2. Compile for C
+```
+protoc --c_out=. network.proto
+```
 
 
 

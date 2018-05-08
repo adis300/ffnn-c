@@ -1,0 +1,41 @@
+// FusiSDK NeuralNetwork protobuf definitions
+
+// [START declaration]
+syntax = "proto3";
+package ffnn;
+// [END declaration]
+
+// [START java_declaration]
+option java_package = "com.votebin.ffnn";
+option java_outer_classname = "NetworkProtos";
+// [END java_declaration]
+
+// [START csharp_declaration]
+option csharp_namespace = "Votebin.FFNN";
+// [END csharp_declaration]
+
+// [START messages]
+message Weight {
+  int32 col = 1;
+  int32 row = 2;
+  repeated double grid = 3;
+}
+message Bias {
+  repeated double vector = 1;
+}
+
+message Network {
+  enum ActivationType {
+    SIGMOID = 0;
+    LINEAR = 1;
+    RELU = 2;
+    THRESHOLD = 3;
+    SOFTMAX = 4;
+  }
+  repeated int32 layerSizes = 1;
+  repeated ActivationType activations = 2;
+  repeated Weight weights = 3;
+  repeated Bias biases = 4;
+}
+
+// [END messages]
