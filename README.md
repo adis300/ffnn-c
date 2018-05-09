@@ -70,5 +70,75 @@ cd into https://github.com/protobuf-c/protobuf-c
 protoc --c_out=. network.proto
 ```
 
+# Use Protobuf2 to serialize a neural network
+```
+from utility.network_pb2 import *
+
+layerSizes = [5, 2, 2]
+network = Network()
+network.layerSizes.extend(layerSizes)
+weights = [Weight(), Weight()]
+
+weights[0].col = layerSizes[0]
+weights[0].row = layerSizes[1]
+weights[0].grid.extend([0,0,0,0,0,0,0,0,0,0])
+
+weights[1].col = layerSizes[1]
+weights[1].row = layerSizes[2]
+weights[1].grid.extend([0,0,0,0])
+
+biases = [Bias(), Bias()]
+
+biases[0].vector.extend([0,0,0,0])
+biases[1].vector.extend([0,0,0,0])
+
+network.activations.extend([Network.RELU, Network.SOFTMAX])
+network.weights.extend(weights)
+network.biases.extend(biases)
+
+print(network.SerializeToString())
+```
+# Use Protobuf3 to serialize a neural network
+```
+from utility.network_pb3 import *
+
+network = Network()
+network.layerSizes.append(3)
+network.layerSizes.append(2)
+network.layerSizes.append(2)
+
+network.activations.append(Network.ActivationType.RELU)
+network.activations.append(Network.ActivationType.LINEAR)
+
+weight1 = Weight()
+weight1.col = 3
+weight1.row = 2
+weight1.grid.append(0.1)
+weight1.grid.append(0.2)
+weight1.grid.append(0.3)
+weight1.grid.append(0.4)
+weight1.grid.append(0.5)
+weight1.grid.append(0.6)
+network.weights.append(weight1)
+
+weight2 = Weight()
+weight2.col = 2
+weight2.row = 2
+weight2.grid.append(0.1)
+weight2.grid.append(0.2)
+weight2.grid.append(0.3)
+weight2.grid.append(0.4)
+network.weights.append(weight2)
+
+bias1 = Bias()
+bias1.vector.append(0.6)
+bias1.vector.append(0.7)
+bias2 = bias1
+
+network.biases.append(bias1)
+network.biases.append(bias2)
+
+print(network.encode_to_bytes())
+```
 
 
