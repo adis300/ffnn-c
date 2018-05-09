@@ -152,11 +152,11 @@ Network* create_network_from_protobuf(void * proto_network_data, int data_size){
         Ffnn__Weight* weight_node = unpacked_network -> weights[i];
         Ffnn__Bias* bias_node = unpacked_network -> biases[i];
         int invalid_layer = 0;
-        if(weight_node -> col * weight_node -> row != weight_node -> n_grid) invalid_layer = 1;
-        if(weight_node -> col != network-> layer_sizes[i] || weight_node -> row != network-> layer_sizes[i+1]) invalid_layer = 1;
-    
-        if(bias_node -> n_vector != network-> layer_sizes[i + 1]) invalid_layer = 1;
-        
+
+        if(((unsigned) weight_node -> col * weight_node -> row) != weight_node -> n_grid) invalid_layer = 1;
+        if(weight_node -> col != network -> layer_sizes[i] || weight_node -> row != network -> layer_sizes[i+1]) invalid_layer = 1;
+        if(bias_node -> n_vector != (unsigned) network -> layer_sizes[i+1]) invalid_layer = 1;
+
         if(invalid_layer){
             printf("ffnn:create_network_from_protobuf:Invalid layer contents.");
             ffnn__network__free_unpacked(unpacked_network, NULL);
