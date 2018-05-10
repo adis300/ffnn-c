@@ -250,8 +250,8 @@ Network* create_network_from_json(char * json_network){
             }
             printf("-- activations:\n");
             ++ token_index; // Unwrap array.
-            activations = (char**) alloca(activation_values -> size * sizeof(char*));
             activation_size = activation_values -> size;
+            activations = (char**) alloca(activation_size * sizeof(char*));
 			for (int i = 0; i < activation_values -> size; i++) {
 				jsmntok_t *value_token = &tokens[token_index+i];
                 activations[i] = strndup(json_network + value_token->start, value_token->end - value_token->start);
@@ -277,11 +277,14 @@ Network* create_network_from_json(char * json_network){
             printf("-- layerSizes:\n");
 			for (int i = 0; i < json_layer_sizes -> size; i++) {
 				jsmntok_t *value_token = &tokens[token_index+i];
-                char* layer_size = strndup(json_network + value_token->start, value_token->end - value_token->start);
-				printf("---- %s\n", layer_size);
-                network -> layer_sizes[i] = atoi(layer_size);
+                
+                char* layer_size_str = strndup(json_network + value_token->start, value_token->end - value_token->start);
+				printf("---- %s\n", layer_size_str);
+                network -> layer_sizes[i] = atoi(layer_size_str);
+                free(layer_size_str);
+
                 if(network -> layer_sizes[i] == 0) {
-                    printf("ERROR:Network:create_network_from_json:Invalid node size in layerSizes is not an integer: %s!", layer_size);
+                    printf("ERROR:Network:create_network_from_json:Invalid node size in layerSizes is not an integer: %s!", layer_size_str);
                     free(network);
                     return NULL;
                 }
@@ -315,6 +318,7 @@ Network* create_network_from_json(char * json_network){
                             jsmntok_t *value = &tokens[token_index+i + 1];
                             char* bias_value_str = strndup(json_network + value->start, value->end - value->start);
                             layer_biases[bias_ind][i] = atof(bias_value_str);
+                            free(bias_value_str);
                             printf("------ %lf\n", layer_biases[bias_ind][i]);
                         }
                         token_index += bias_object_vector -> size;
@@ -349,11 +353,13 @@ Network* create_network_from_json(char * json_network){
                     if (json_key_check(json_network, &tokens[token_index], "col") == 0) {
                         char* col_str = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
                         layer_weights_cols[weight_ind] = atoi(col_str);
+                        free(col_str);
                         printf("---- col: %i\n", layer_weights_cols[weight_ind]);
                         token_index += 2;
                     } else if (json_key_check(json_network, &tokens[token_index], "row") == 0) {
                         char* row_str = strndup(json_network + tokens[token_index + 1].start, tokens[token_index + 1].end-tokens[token_index + 1].start);
                         layer_weights_rows[weight_ind] = atoi(row_str);
+                        free(row_str);
                         printf("---- row: %i\n", layer_weights_rows[weight_ind]);
                         token_index += 2;
                     } else if(json_key_check(json_network, &tokens[token_index], "grid") == 0){
@@ -366,6 +372,7 @@ Network* create_network_from_json(char * json_network){
                             jsmntok_t *value = &tokens[token_index+i + 1];
                             char* weight_value_str = strndup(json_network + value->start, value->end - value->start);
                             layer_weights[weight_ind][i] = atof(weight_value_str);
+                            free(weight_value_str);
                             printf("------ %lf\n", layer_weights[weight_ind][i]);
                         }
                         token_index += weight_object_grid -> size;
@@ -438,6 +445,9 @@ Network* create_network_from_json(char * json_network){
                 // printf("DEBUG: copied weights %lf, %lf, %lf, %lf\n",weights[0], weights[1],weights[2],weights[3]);
                 network -> layers[i] = layer;
             }
+            if(activation_size > 0){
+                for(int i = 0; i < activation_size; i++) free(activations[i]);
+            }
             if(success == 0){
                 network -> input_length = network -> layer_sizes[0];
                 network -> output_length = network -> layer_sizes[number_of_layers];
@@ -452,6 +462,9 @@ Network* create_network_from_json(char * json_network){
         printf("ERROR:Network:create_network_from_json:Number of layers does not match layer biases and layer weights:\n");
     }
     
+    if(activation_size > 0){
+        for(int i = 0; i < activation_size; i++) free(activations[i]);
+    }
     // Failed to create a network, free memory and return
     free_network(network);
     return NULL;
