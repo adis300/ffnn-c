@@ -188,7 +188,6 @@ Network* create_network_from_protobuf(void * proto_network_data, int data_size){
             default:
                 printf("ffnn:create_network_from_protobuf:unrecognized activation:%i", unpacked_network -> activations[i]);
                 activation = "sigmoid";
-                break;
         }
         NetworkLayer * layer = create_layer(network -> layer_sizes[i+1], network -> layer_sizes[i], weights, biases, activation);
         network -> layers[i] = layer;
