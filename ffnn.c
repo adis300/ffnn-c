@@ -42,6 +42,7 @@ extern inline double ffnn_activation_sigmoid(double x) {
 }
 
 extern inline double ffnn_activation_softmax(double x) {
+    if(x > 12) return 162754.791419;
     return exp(x);
 }
 
