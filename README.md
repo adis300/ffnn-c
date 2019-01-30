@@ -5,7 +5,7 @@ ffnn-c is a minimal high-performance feed-forward neural networks implementation
 
 The library supports parsing network specified in JSON.
 
-For any questions please contact adis@brainco.tech.
+For any questions please contact adis@live.cn.
 
 # Running examples and tests with Makefile
 ```
