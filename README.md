@@ -1,4 +1,6 @@
 # ffnn-c
+** This project is too old. TensorflowLite/Micro is better in most cases. You can use this project as an example if you want to custom build your own inference engine for small and simple ML models.**
+
 Feed-forward neural network in C programing language
 
 ffnn-c is a minimal high-performance feed-forward neural networks implementation in C. Suitable for embeded systesms to run pre-trained neural networks. This library is useful when you have a pre-trained neural network structure and you want to use it in an embeded system.
