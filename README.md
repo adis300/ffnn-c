@@ -1,5 +1,5 @@
 # ffnn-c
-** This project is too old. TensorflowLite/Micro is better in most cases. You can use this project as an example if you want to custom build your own inference engine for small and simple ML models.**
+## This project is too old. TensorflowLite/Micro is better in most cases. You can use this project as an example if you want to custom build your own inference engine for small and simple ML models.
 
 Feed-forward neural network in C programing language
 
